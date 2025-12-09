@@ -20,8 +20,10 @@ import (
 	"fmt"
 	"strings"
 
+	userv1 "github.com/openshift/api/user/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/klog/v2"
 )
 
 // Store is a generic object storage and processing interface.  A
@@ -165,6 +167,10 @@ type cache struct {
 
 var _ Store = &cache{}
 
+func dbg(group, format string, args ...any) {
+	klog.Infof(fmt.Sprintf("[OCPBUGS-63228][g=%s] %s", group, format), args...)
+}
+
 // Add inserts an item into the cache.
 func (c *cache) Add(obj interface{}) error {
 	key, err := c.keyFunc(obj)
@@ -172,6 +178,9 @@ func (c *cache) Add(obj interface{}) error {
 		return KeyError{obj, err}
 	}
 	c.cacheStorage.Add(key, obj)
+	if g, ok := obj.(*userv1.Group); ok {
+		dbg(g.Name, "CACHE added group %s: %v", g.Name, g.Users)
+	}
 	return nil
 }
 
@@ -181,7 +190,20 @@ func (c *cache) Update(obj interface{}) error {
 	if err != nil {
 		return KeyError{obj, err}
 	}
+	if oldObj, exists := c.cacheStorage.Get(key); exists {
+		if oldGroup, ok := oldObj.(*userv1.Group); ok {
+			dbg(oldGroup.Name, "CACHE before updating: users=%v", oldGroup.Users)
+		}
+	}
 	c.cacheStorage.Update(key, obj)
+	if g, ok := obj.(*userv1.Group); ok {
+		dbg(g.Name, "CACHE updated group %s: %v", g.Name, g.Users)
+		if newObj, exists := c.cacheStorage.Get(key); exists {
+			if newGroup, ok := newObj.(*userv1.Group); ok {
+				dbg(newGroup.Name, "CACHE after updating: users=%v", newGroup.Users)
+			}
+		}
+	}
 	return nil
 }
 
@@ -192,6 +214,9 @@ func (c *cache) Delete(obj interface{}) error {
 		return KeyError{obj, err}
 	}
 	c.cacheStorage.Delete(key)
+	if g, ok := obj.(*userv1.Group); ok {
+		dbg(g.Name, "CACHE deleted group %s", g.Name)
+	}
 	return nil
 }
 

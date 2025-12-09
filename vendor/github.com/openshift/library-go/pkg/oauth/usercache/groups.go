@@ -2,7 +2,9 @@ package usercache
 
 import (
 	"fmt"
+
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/klog/v2"
 
 	userapi "github.com/openshift/api/user/v1"
 	userinformer "github.com/openshift/client-go/user/informers/externalversions/user/v1"
@@ -25,6 +27,7 @@ func ByUserIndexKeys(obj interface{}) ([]string, error) {
 		return nil, fmt.Errorf("unexpected type: %v", obj)
 	}
 
+	klog.Infof("[OCPBUGS-63228][g=%s] re-indexing group; users=%v", group.Name, group.Users)
 	return group.Users, nil
 }
 
@@ -49,6 +52,7 @@ func (c *GroupCache) GroupsFor(username string) ([]*userapi.Group, error) {
 		case nil:
 			// if there is a race and something remove the groups from this user, skip it
 			// TODO: we should investigate this more and probably use non-racy informer here?
+			klog.Infof("[OCPBUGS-63228][u=%s] will continue due to possible race; object: %v", username, objs[i])
 			continue
 		default:
 			// if the type is not nil nor group, panic

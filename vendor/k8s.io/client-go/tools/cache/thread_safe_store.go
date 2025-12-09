@@ -18,9 +18,11 @@ package cache
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/klog/v2"
 )
 
 // ThreadSafeStore is an interface that allows concurrent indexed
@@ -193,6 +195,9 @@ func (i *storeIndex) updateSingleIndex(name string, oldObj interface{}, newObj i
 // updateIndices must be called from a function that already has a lock on the cache
 func (i *storeIndex) updateIndices(oldObj interface{}, newObj interface{}, key string) {
 	for name := range i.indexers {
+		if name == "ByUser" && strings.HasPrefix(key, "group") {
+			klog.Infof("[OCPBUGS-63228] updating index %s and key %s: oldObj=%v, newObj=%v", name, key, oldObj, newObj)
+		}
 		i.updateSingleIndex(name, oldObj, newObj, key)
 	}
 }
@@ -323,6 +328,7 @@ func (c *threadSafeMap) ByIndex(indexName, indexedValue string) ([]interface{}, 
 		list = append(list, c.items[key])
 	}
 
+	klog.Infof("[OCPBUGS-63228] indexName=%s indexedValue=%s set=%v list=%v", indexName, indexedValue, set.List(), list)
 	return list, nil
 }
 

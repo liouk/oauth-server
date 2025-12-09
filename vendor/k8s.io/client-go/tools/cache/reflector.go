@@ -27,6 +27,8 @@ import (
 	"sync"
 	"time"
 
+	userv1 "github.com/openshift/api/user/v1"
+
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -896,6 +898,11 @@ loop:
 				continue
 			}
 			resourceVersion := meta.GetResourceVersion()
+
+			if g, ok := event.Object.(*userv1.Group); ok && event.Type != watch.Bookmark {
+				klog.Infof("[OCPBUGS-63228][g=%s] %s event for Group '%s'; users=%v", g.Name, event.Type, g.Name, g.Users)
+			}
+
 			switch event.Type {
 			case watch.Added:
 				err := store.Add(event.Object)
