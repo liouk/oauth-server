@@ -249,9 +249,13 @@ func (m *UserGroupsMapper) removeUserFromGroup(idpName, username, group string) 
 		dbg(username, "user not found in lister group: %v", updatedGroup.Users)
 		return nil
 	case 0:
-		newUsers = updatedGroup.Users[1:]
+		// newUsers = updatedGroup.Users[1:]
+		newUsers = append([]string(nil), updatedGroup.Users[1:]...)
 	default:
-		newUsers = append(updatedGroup.Users[0:userIdx], updatedGroup.Users[userIdx+1:]...)
+		// newUsers = append(updatedGroup.Users[0:userIdx], updatedGroup.Users[userIdx+1:]...)
+		newUsers = make([]string, 0, len(updatedGroup.Users)-1)
+		newUsers = append(newUsers, updatedGroup.Users[:userIdx]...)
+		newUsers = append(newUsers, updatedGroup.Users[userIdx+1:]...)
 	}
 
 	updatedGroupCopy := updatedGroup.DeepCopy()
